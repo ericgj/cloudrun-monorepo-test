@@ -1,0 +1,40 @@
+#!/usr/bin/env sh
+set -e
+
+SUBDOM="${1}"
+SERVICE="${2}"
+
+if [ -z "${SUBDOM}" ] || [ -z "${SERVICE}" ]; then
+  echo "Error: missing parameter(s)." >&2
+  echo "    Usage: ${0} SUBDOMAIN SERVICE"  >&2
+  exit 1
+fi
+
+ROOTDIR="services/${SUBDOM}/${SERVICE}"
+
+if [ ! -d ${ROOTDIR} ]; then
+  echo "No such directory: ${ROOTDIR}" >&2
+  exit 1
+fi
+
+for r in src test 
+do
+    if [ -d .venv-tmp ]; then
+      rm -fr .venv-tmp
+    fi
+
+    echo "Creating temporary virtualenv..." >&2
+    ( virtualenv .venv-tmp  2>&1 > /dev/null 
+      . .venv-tmp/bin/activate && \
+      echo "Installing open requirements...$r" >&2  && \
+      PIP_FIND_LINKS=lib pip install -r "${ROOTDIR}/$r/requirements-.txt" 2>&1 > /dev/null && \
+      echo "Freezing locked requirements...$r" >&2  && \
+      pip freeze | tee "${ROOTDIR}/$r/requirements.txt" && \
+      deactivate && \
+      rm -fr .venv-tmp
+    ) || ( rm -fr .venv-tmp )
+done
+
+echo "Done." >&2
+
+
