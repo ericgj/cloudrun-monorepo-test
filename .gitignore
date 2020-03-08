@@ -24,3 +24,4 @@ secrets
 /build
 
 scratch
+/.tmp

@@ -19,6 +19,10 @@ fi
 
 for r in src test 
 do
+    if [ ! -f "${ROOTDIR}/$r/requirements-.txt" ]; then
+      continue
+    fi
+
     if [ -d .venv-tmp ]; then
       rm -fr .venv-tmp
     fi
