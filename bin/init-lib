@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -eou pipefail
+
+bin/build-lib --build-dir lib/.cache
+

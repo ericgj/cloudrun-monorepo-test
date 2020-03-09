@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -eou pipefail
+
+if [ -d ".venv" ]; then
+  rm -rf .venv
+fi
+
+virtualenv .venv  2>&1 > /dev/null 
+. .venv/bin/activate && \
+  echo "Installing open requirements..." >&2  && \
+  pip install -r "requirements-.txt" --find-links lib 2>&1 > /dev/null && \
+  echo "Freezing locked requirements..." >&2  && \
+  pip freeze | tee "requirements.txt" 
+

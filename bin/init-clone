@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -eou pipefail
+
+# Note: only run when cloning the repo for the first time.
+# If you are creating a new repo/project, run init.
+
+echo "Creating development virtualenv..." >&2
+bin/init-virtualenv
+
+echo "Building local packages..." >&2
+bin/init-lib
+
+echo "Decrypting stored secrets..." >&2
+bin/init-secrets
+
+

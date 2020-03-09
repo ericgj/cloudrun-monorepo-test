@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -eou pipefail
+
+# Note: only run when initializing the project for the first time.
+# If you are cloning an existing repo, run init-clone.
+
+echo "Creating development virtualenv..." >&2
+bin/init-virtualenv
+
+echo "Initializing GCP project..." >&2
+bin/init-project
+
+echo "Creating base images..." >&2
+bin/init-images
+

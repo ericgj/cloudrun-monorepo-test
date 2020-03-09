@@ -1,0 +1,21 @@
+FROM python:3.8-slim-buster
+
+ARG lib=lib
+
+COPY src/requirements.txt src/
+COPY test/requirements.txt test/
+COPY $lib/*.whl $lib/
+
+RUN pip install --no-cache-dir --disable-pip-version-check --find-links $lib \
+        -r src/requirements.txt -r test/requirements.txt && \
+    pip install --no-cache-dir --disable-pip-version-check pytest
+
+RUN rm $lib/*.whl
+
+COPY src .
+COPY test .
+
+ENV PYTHONPATH src:test
+ENTRYPOINT ["pytest"]
+CMD ["test"]
+

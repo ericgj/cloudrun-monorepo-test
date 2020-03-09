@@ -1,0 +1,47 @@
+#/usr/bin/env bash
+set -eou pipefail
+
+# Note: used for local testing only. Not used in CI build.
+
+SUBDOM="${1}"
+SERVICE="${2}"
+ENV="${3}"
+
+if [ -z "${SUBDOM}" ]; then
+    echo "Subdomain not specified." >&2
+    exit 1
+fi
+if [ -z "${SERVICE}" ]; then
+    echo "Service not specified." >&2
+    exit 1
+fi
+if [ -z "${ENV}" ]; then
+    echo "Environment not specified." >&2
+    exit 1
+fi
+
+PROJ=$(cat secrets/project)
+if [ -z "${PROJ}" ]; then
+    echo "Project not found. Check secrets/project file." >&2
+    exit 1
+fi
+
+bin/build-service "${SUBDOM}" "${SERVICE}" "${ENV}" --no-log-remote --lib-dir lib/.cache ${@:4}
+
+echo "Linting..." >&2
+flake8 build
+    
+if [ -d "build/test" ]; then
+    cp image/test build/Dockerfile
+    cp image/.dockerignore build/
+
+    imagename=$(echo "${PROJ}-${SUBDOM}-${SERVICE}" | tr '[:upper:]' '[:lower:]')
+
+    echo "Building test image..." >&2
+    docker build build --build-arg "lib=lib/.cache" --tag "${imagename}:test"
+
+    echo "Running tests..." >&2
+    docker run --env-file build/.env "${imagename}:test"
+fi
+
+

@@ -1,5 +1,5 @@
-#!/usr/bin/env sh
-set -e
+#!/usr/bin/env bash
+set -eou pipefail
 
 ACCT="$(cat secrets/billing-account)"
 ORG="$(cat secrets/organization-id)"
@@ -51,6 +51,9 @@ gcloud kms keys create default --project "${PROJ}" --location global \
 gcloud kms keys create service-accounts --project "${PROJ}" --location global \
     --keyring test --purpose encryption
 
+echo "Encrypting project-wide secrets..." >&2
+bin/kms encrypt
+
 echo "Saving service account key for testing..." >&2
 mkdir -p "secrets/test/service-accounts"
 gcloud iam service-accounts keys create "secrets/test/service-accounts/project.json" \
@@ -58,15 +61,4 @@ gcloud iam service-accounts keys create "secrets/test/service-accounts/project.j
     --project "${PROJ}"
 
 echo "Encrypting service account key for testing..." >&2
-mkdir -p "secrets.enc/test/service-accounts"
-gcloud kms encrypt \
-    --plaintext-file secrets/test/service-accounts/project.json \
-    --ciphertext-file secrets.enc/test/service-accounts/project.json.enc \
-    --location global \
-    --keyring test \
-    --key service-accounts \
-    --project "${PROJ}"
-
-
-echo "Done." >&2
-
+bin/kms encrypt --env test --key service-accounts

@@ -5,7 +5,7 @@ def version():
         return f.read().strip()
 
 setup(
-  name = "WSGI router",
+  name = "WSGI_router",
   version = version(),
   author = "Eric Gjertsen",
   author_email = "egjertsen@ert.com",

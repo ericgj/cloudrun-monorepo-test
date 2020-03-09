@@ -1,0 +1,17 @@
+FROM python:3.8-slim-buster
+
+ARG lib=lib
+ARG main=main
+
+COPY src/requirements.txt ./src/
+COPY $lib ./
+
+RUN pip install --no-cache-dir --disable-pip-version-check -r src/requirements.txt -f $lib && \
+    pip install --no-cache-dir --disable-pip-version-check gunicorn
+   
+RUN rm -rf $lib
+
+COPY src ./
+
+CMD exec gunicorn --bind :$PORT --workers 1 --threads 8 src:$main
+

@@ -1,0 +1,108 @@
+#!/usr/bin/env python
+
+# Note: python2.7 compatible for gcloud builder
+
+from __future__ import print_function
+from argparse import ArgumentParser
+import os
+import os.path
+import subprocess
+import sys
+
+
+def stderr(s):
+    print(s, file=sys.stderr)
+
+
+def get_project():
+    try:
+        proj = open("secrets/project").read().strip()
+        if len(proj) == 0:
+            exit("Project not found. Is your secrets/project file empty?")
+        return proj
+    except OSError:
+        exit("Project not found. Check secrets/project file.")
+
+
+def mkdir_p(d):
+    if os.path.exists(d) and os.path.isdir(d):
+        return
+    os.makedirs(d)
+
+
+def main(parser, argv=sys.argv[1:]):
+    args = parser.parse_args(argv)
+
+    project = get_project()
+
+    plain_dir = key_path(args.env, args.key, args.decrypted_dir)
+    cipher_dir = key_path(args.env, args.key, args.encrypted_dir)
+
+    source_dir = None
+    dest_dir = None
+    if args.cmd == "encrypt":
+        source_dir = plain_dir
+        dest_dir = cipher_dir
+    elif args.cmd == "decrypt":
+        source_dir = cipher_dir
+        dest_dir = plain_dir
+
+    mkdir_p(dest_dir)
+
+    for f in os.listdir(source_dir):
+        source_file = os.path.join(source_dir, f)
+        dest_file = os.path.join(dest_dir, f)
+
+        if os.path.isfile(source_file) and not f.startswith("."):
+            stderr("%sing %s ---> %s" % (args.cmd, source_file, dest_file))
+            cmdline = [
+                "gcloud",
+                "kms",
+                args.cmd,
+                "--plaintext-file",
+                os.path.join(plain_dir, f),
+                "--ciphertext-file",
+                os.path.join(cipher_dir, f),
+                "--location",
+                "global",
+                "--keyring",
+                args.env,
+                "--key",
+                args.key,
+                "--project",
+                project,
+            ]
+
+            subprocess.check_call(
+                cmdline, shell=False, stdout=sys.stdout, stderr=sys.stderr
+            )
+
+    stderr("Done.")
+
+def key_path(keyring, key, prefix):
+    return os.path.join(*[
+        p for p in [ prefix, keyring, key ] if not p == 'default'
+    ])
+
+
+# ------------------------------------------------------------------------------
+# ARGUMENT PARSER
+# ------------------------------------------------------------------------------
+
+parser = ArgumentParser(description="Encrypt or decrypt project secrets via Cloud KMS")
+parser.add_argument("cmd", type=str, choices=["encrypt", "decrypt"])
+parser.add_argument("--env", default="default", 
+    help="application environment or 'default' for project-wide"
+)
+parser.add_argument("--key", default="default", 
+    help="key type (e.g. 'service-accounts') or 'default' for environment-wide"
+)
+parser.add_argument("--decrypted-dir", default="secrets", help="decrypted secrets root dir") 
+parser.add_argument("--encrypted-dir", default="secrets.enc", help="encrypted secrets root dir") 
+
+if __name__ == "__main__":
+    try:
+        main(parser)
+    except Exception as e:
+        raise e
+        # exit(e)

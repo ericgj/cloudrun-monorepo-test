@@ -1,0 +1,190 @@
+#!/usr/bin/env python
+
+# Note: python2.7 compatible for gcloud builder
+
+from __future__ import print_function
+from argparse import ArgumentParser, ArgumentTypeError
+import os
+import os.path
+import shutil
+import sys
+
+from ruamel.yaml import YAML
+
+yaml = YAML(typ="safe")
+yaml.default_flow_style = False
+
+def stderr(s):
+    print(s, file=sys.stderr)
+
+
+def get_project():
+    try:
+        proj = open("secrets/project").read().strip()
+        if len(proj) == 0:
+            exit("Project not found. Is your secrets/project file empty?")
+        return proj
+    except OSError:
+        exit("Project not found. Check secrets/project file.")
+
+
+def mkdir_p(d):
+    if os.path.exists(d) and os.path.isdir(d):
+        return
+    os.makedirs(d)
+
+
+def rm_rf(d):
+    try:
+        shutil.rmtree(d)
+    except FileNotFoundError:
+        pass
+
+
+def cp_files_within(src, dest):
+    mkdir_p(dest)
+    for basename in os.listdir(src):
+        srcfile = os.path.join(src, basename)
+        destfile = os.path.join(dest, basename)
+        if os.path.isfile(srcfile):
+            shutil.copy2(srcfile, destfile)
+        elif os.path.isdir(srcfile):
+            shutil.copytree(srcfile, destfile)
+
+
+def cp_dir_within(src, dest):
+    shutil.copytree(src, os.path.join(dest, os.path.basename(src)))
+
+
+LOG_LEVEL_TYPES = ["DEBUG", "INFO", "WARNING", "ERROR", "FATAL", "CRITICAL"]
+
+
+# ------------------------------------------------------------------------------
+# MAIN
+# ------------------------------------------------------------------------------
+
+
+def main(parser, argv=sys.argv[1:]):
+    proj = get_project()
+    args = parser.parse_args(argv)
+    copy_files(args)
+    env = get_env(args, proj)
+    copy_env(args, env)
+
+
+def get_env(args, project):
+    subdom_ns = app_subdomain_namespace_name(
+        subdomain=args.subdom,
+        env=args.env
+    )
+
+    return {
+        "APP_PROJECT": project,
+        "APP_SUBDOMAIN": args.subdom,
+        "APP_SUBDOMAIN_NAMESPACE": subdom_ns,
+        "APP_SERVICE": args.service,
+        "APP_ENV": args.env,
+        "APP_LOGGING_LEVEL": args.log_level,
+        "APP_LOGGING_REMOTE": "1" if args.log_remote is True else "0",
+    }
+
+
+def copy_files(args):
+    domain_source = args.source_dir
+    subdom_source = os.path.join(domain_source, args.subdom)
+    
+    service_source = os.path.join(subdom_source, args.service)
+    service_dest = args.build_dir
+
+    lib_source = args.lib_dir
+    lib_dest = os.path.join(args.build_dir, os.path.dirname(lib_source))
+    
+    secrets_source = os.path.join(args.secrets_dir, args.env)
+    secrets_dest = os.path.join(args.build_dir, os.path.dirname(secrets_source))
+
+    stderr("Copying source...")
+    rm_rf(args.build_dir)
+    mkdir_p(args.build_dir)
+    cp_files_within(service_source, service_dest)
+
+    stderr("Copying library source...")
+    cp_dir_within(lib_source, lib_dest)
+
+    stderr("Copying secrets...")
+    mkdir_p(secrets_dest)
+    cp_dir_within(secrets_source, secrets_dest)
+
+
+def copy_env(args, env):
+    mkdir_p(args.build_dir)
+
+    stderr("Creating env.yaml...")
+    set_env_yaml_env(os.path.join(args.build_dir, "env.yaml"), env)
+
+    stderr("Creating .env...")
+    set_dotenv_env(os.path.join(args.build_dir, ".env"), env)
+
+    appyaml = os.path.join(args.build_dir, "app.yaml")
+    if os.path.isfile(appyaml):
+        stderr("Updating app.yaml...")
+        set_app_yaml_env(appyaml, env)
+
+def app_subdomain_namespace_name(subdomain, env, app_state=None):
+    return "--".join([part.lower() for part in (subdomain, env, app_state) if part is not None])
+
+def set_env_yaml_env(envyaml, env):
+    with open(envyaml, "w") as f:
+        yaml.dump(env, f)
+
+
+def set_dotenv_env(dotenv, env):
+    with open(dotenv, "w") as f:
+        for (k, v) in env.items():
+            print("%s=%s" % (k, v), file=f)
+
+
+def set_app_yaml_env(appyaml, env):
+    appyaml_data = None
+    ischanged = False
+    with open(appyaml) as f:
+        appyaml_data = yaml.load(f)
+        if isinstance(appyaml_data, dict):
+            appyaml_data["env_variables"] = env
+            ischanged = True
+    if ischanged:
+        with open(appyaml, "w") as f:
+            yaml.dump(appyaml_data, f)
+
+
+# ------------------------------------------------------------------------------
+# ARGUMENT PARSER
+# ------------------------------------------------------------------------------
+
+parser = ArgumentParser(description="Build service locally")
+parser.add_argument("subdom", type=str, help="subdomain")
+parser.add_argument("service", type=str, help="service")
+parser.add_argument("env", help="application environment")
+parser.add_argument("--source-dir", default="services", help="source root directory")
+parser.add_argument("--lib-dir", default="lib", help="shared libraries root directory")
+parser.add_argument("--secrets-dir", default="secrets", help="secrets root directory")
+parser.add_argument("--build-dir", default="build", help="build directory")
+parser.add_argument(
+    "--log-level", default="INFO", choices=LOG_LEVEL_TYPES, help="logging level"
+)
+parser.add_argument(
+    "--log-remote", action="store_true", help="use remote (Stackdriver) logging"
+)
+parser.add_argument(
+    "--no-log-remote",
+    action="store_false",
+    dest="log_remote",
+    help="local (stderr) logging only",
+)
+
+
+if __name__ == "__main__":
+    try:
+        main(parser)
+    except Exception as e:
+        raise e
+        # exit(e)

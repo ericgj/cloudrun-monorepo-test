@@ -1,0 +1,19 @@
+#/usr/bin/env bash
+set -eou pipefail
+
+PROJ=$(cat secrets/project)
+if [ -z "${PROJ}" ]; then
+    echo "Project not found. Check secrets/project file." >&2
+    exit 1
+fi
+
+rm -rf build
+mkdir build
+
+cp requirements.txt build/
+cp image/builder build/Dockerfile
+cp image/.dockerignore build/
+
+docker build -t "gcr.io/${PROJ}/builder:latest" build
+docker push "gcr.io/${PROJ}/builder:latest"
+
