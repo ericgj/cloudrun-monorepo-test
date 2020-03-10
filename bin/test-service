@@ -26,16 +26,16 @@ if [ -z "${PROJ}" ]; then
     exit 1
 fi
 
-bin/build-service "${SUBDOM}" "${SERVICE}" "${ENV}" --no-log-remote --lib-dir lib/.cache ${@:4}
+bin/stage-service "${SUBDOM}" "${SERVICE}" "${ENV}" --no-log-remote --lib-dir lib/.cache ${@:4}
 
 echo "Linting..." >&2
 flake8 build
     
 if [ -d "build/test" ]; then
-    cp image/test build/Dockerfile
+    cp image/test-service build/Dockerfile
     cp image/.dockerignore build/
 
-    imagename=$(echo "${PROJ}-${SUBDOM}-${SERVICE}" | tr '[:upper:]' '[:lower:]')
+    imagename=$(echo "${PROJ}--${SUBDOM}--${SERVICE}" | tr '[:upper:]' '[:lower:]')
 
     echo "Building test image..." >&2
     docker build build --build-arg "lib=lib/.cache" --tag "${imagename}:test"

@@ -1,0 +1,58 @@
+#/usr/bin/env bash
+set -eou pipefail
+
+# Note: used for local testing only. Not used in CI build.
+
+PROJ=$(cat secrets/project)
+if [ -z "${PROJ}" ]; then
+    echo "Project not found. Check secrets/project file." >&2
+    exit 1
+fi
+
+if [ -z "${1}" ]; then
+    echo "Library not specified." >&2
+    exit 1
+fi
+
+SOURCE=lib/${1}
+
+if [ -z "${SOURCE}" ]; then
+    echo "Path to library source not specified." >&2
+    exit 1
+fi
+
+echo "Linting..." >&2
+flake8 "${SOURCE}"
+
+if [ ! -d "${SOURCE}/test" ]; then
+    echo "No tests found in ${SOURCE}" >&2
+    exit 1
+fi
+
+if [ ! -f "${SOURCE}/test/requirements.txt" ]; then
+    echo "No test requirements file found in ${SOURCE}" >&2
+    exit 1
+fi
+
+if [ -d "build" ]; then
+    rm -rf build
+fi
+
+mkdir -p build/.cache
+
+pip wheel "${SOURCE}" -w build/.cache
+
+cp -r "${SOURCE}/test" build/
+
+cp image/test-lib build/Dockerfile
+cp image/.dockerignore build/
+
+imagename=$(echo "${PROJ}--${SOURCE}" | tr '[:upper:]' '[:lower:]' | tr '/' '-')
+
+echo "Building test image..." >&2
+docker build build --build-arg "lib=.cache" --tag "${imagename}:test"
+
+echo "Running tests..." >&2
+docker run "${imagename}:test"
+
+

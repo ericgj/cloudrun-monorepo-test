@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 # Note: python2.7 compatible for gcloud builder
+# Note: this is "build without running tests". I am not sure I want to use it.
 
 from __future__ import print_function
 from argparse import ArgumentParser, ArgumentTypeError

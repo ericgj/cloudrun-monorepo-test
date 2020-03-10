@@ -31,7 +31,7 @@ do
     ( virtualenv .venv-tmp  2>&1 > /dev/null 
       . .venv-tmp/bin/activate && \
       echo "Installing open requirements...$r" >&2  && \
-      pip install -r "${ROOTDIR}/$r/requirements-.txt" --find-links lib 2>&1 > /dev/null && \
+      pip install -r "${ROOTDIR}/$r/requirements-.txt" --find-links lib/.cache 2>&1 > /dev/null && \
       echo "Freezing locked requirements...$r" >&2  && \
       pip freeze | tee "${ROOTDIR}/$r/requirements.txt" && \
       deactivate && \

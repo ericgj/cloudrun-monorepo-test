@@ -1,1 +1,1 @@
-WSGI_router
+rest_router
