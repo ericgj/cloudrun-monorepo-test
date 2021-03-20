@@ -18,7 +18,7 @@ flake8==3.7.9             # via -r requirements-.txt
 future==0.18.2            # via -r requirements-.txt, cookiecutter
 idna==2.9                 # via -r requirements-.txt, requests
 jinja2-time==0.2.0        # via -r requirements-.txt, cookiecutter
-jinja2==2.11.1            # via -r requirements-.txt, cookiecutter, jinja2-time
+jinja2==2.11.3            # via -r requirements-.txt, cookiecutter, jinja2-time
 markupsafe==1.1.1         # via -r requirements-.txt, jinja2
 mccabe==0.6.1             # via -r requirements-.txt, flake8
 pathspec==0.7.0           # via -r requirements-.txt, black
