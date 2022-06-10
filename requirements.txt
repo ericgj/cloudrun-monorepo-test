@@ -12,7 +12,7 @@ black==19.10b0            # via -r requirements-.txt
 certifi==2019.11.28       # via -r requirements-.txt, requests
 chardet==3.0.4            # via -r requirements-.txt, binaryornot, requests
 click==7.0                # via -r requirements-.txt, black, cookiecutter, pip-tools
-cookiecutter==1.7.0       # via -r requirements-.txt
+cookiecutter==2.1.1       # via -r requirements-.txt
 entrypoints==0.3          # via -r requirements-.txt, flake8
 flake8==3.7.9             # via -r requirements-.txt
 future==0.18.2            # via -r requirements-.txt, cookiecutter
